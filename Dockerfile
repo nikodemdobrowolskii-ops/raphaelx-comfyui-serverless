@@ -1,4 +1,4 @@
-FROM runpod/worker-comfyui:5.5.0-base
+FROM runpod/worker-comfyui:5.8.5-base
 
 # Install custom nodes using comfy-cli (proper registration + dependency management)
 RUN comfy node install --exit-on-fail efficiency-nodes-comfyui
