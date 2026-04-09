@@ -10,3 +10,6 @@ RUN comfy node install --exit-on-fail comfyui_jps-nodes
 RUN comfy node install --exit-on-fail comfyui-kjnodes
 RUN comfy node install --exit-on-fail was-node-suite-comfyui
 
+
+
+# Trigger rebuild
