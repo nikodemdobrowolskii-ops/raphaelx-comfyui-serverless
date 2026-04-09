@@ -1,19 +1,69 @@
 FROM runpod/worker-comfyui:5.8.5-base
 
-# Install custom nodes using comfy-cli (proper registration + dependency management)
-RUN comfy node install --exit-on-fail efficiency-nodes-comfyui
-RUN comfy node install --exit-on-fail rgthree-comfy
-RUN comfy node install --exit-on-fail comfyui-impact-pack
-RUN comfy node install --exit-on-fail comfyui-impact-subpack
-RUN comfy node install --exit-on-fail comfyui_essentials
-RUN comfy node install --exit-on-fail comfyui_jps-nodes
-RUN comfy node install --exit-on-fail comfyui-kjnodes
-RUN comfy node install --exit-on-fail was-node-suite-comfyui
+# Override extra_model_paths.yaml to point to our network volume structure
+RUN cat > /comfyui/extra_model_paths.yaml <<'YAML'
+docker_image:
+    base_path: /comfyui
+    checkpoints: models/checkpoints/
+    clip: models/clip/
+    clip_vision: models/clip_vision/
+    configs: models/configs/
+    controlnet: models/controlnet/
+    embeddings: models/embeddings/
+    loras: models/loras/
+    upscale_models: models/upscale_models/
+    vae: models/vae/
+    unet: models/unet/
 
+network_volume:
+    base_path: /runpod-volume/ComfyUI/models
+    checkpoints: checkpoints/
+    vae: vae/
+    loras: loras/
+    clip: clip/
+    clip_vision: clip_vision/
+    unet: unet/
+    upscale_models: upscale_models/
+    controlnet: controlnet/
+    embeddings: embeddings/
+    ultralytics: ultralytics/
+    sams: sams/
+YAML
 
+# Install critical missing dependency
+RUN pip install --no-cache-dir simpleeval
 
-# Trigger rebuild
+# Clone all custom nodes
+RUN cd /comfyui/custom_nodes && \
+    git clone https://github.com/rgthree/rgthree-comfy.git && \
+    git clone https://github.com/ltdrdata/ComfyUI-Impact-Pack.git && \
+    git clone https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git && \
+    git clone https://github.com/jags111/efficiency-nodes-comfyui.git && \
+    git clone https://github.com/ltdrdata/ComfyUI-Manager.git && \
+    git clone https://github.com/cubiq/ComfyUI_essentials.git && \
+    git clone https://github.com/JPS-GER/ComfyUI_JPS-Nodes.git && \
+    git clone https://github.com/kijai/ComfyUI-KJNodes.git && \
+    git clone https://github.com/WASasquatch/was-node-suite-comfyui.git
 
-# Add legacy GPU Pod model paths (network volume has models at /runpod-volume/ComfyUI/models/)
-RUN printf '\nrunpod_legacy:\n    base_path: /runpod-volume/ComfyUI\n    checkpoints: models/checkpoints/\n    clip: models/clip/\n    clip_vision: models/clip_vision/\n    configs: models/configs/\n    controlnet: models/controlnet/\n    embeddings: models/embeddings/\n    loras: models/loras/\n    upscale_models: models/upscale_models/\n    vae: models/vae/\n    unet: models/unet/\n' >> /comfyui/extra_model_paths.yaml
+# Install pip dependencies
+RUN cd /comfyui/custom_nodes/ComfyUI-Impact-Pack && \
+    pip install --no-cache-dir -r requirements.txt && \
+    python install.py
 
+RUN cd /comfyui/custom_nodes/ComfyUI-Impact-Subpack && \
+    pip install --no-cache-dir -r requirements.txt
+
+RUN cd /comfyui/custom_nodes/rgthree-comfy && \
+    pip install --no-cache-dir -r requirements.txt
+
+RUN cd /comfyui/custom_nodes/efficiency-nodes-comfyui && \
+    pip install --no-cache-dir -r requirements.txt
+
+RUN cd /comfyui/custom_nodes/ComfyUI_essentials && \
+    pip install --no-cache-dir -r requirements.txt
+
+RUN cd /comfyui/custom_nodes/ComfyUI-KJNodes && \
+    pip install --no-cache-dir -r requirements.txt
+
+RUN cd /comfyui/custom_nodes/was-node-suite-comfyui && \
+    pip install --no-cache-dir -r requirements.txt
