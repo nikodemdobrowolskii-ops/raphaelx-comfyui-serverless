@@ -65,19 +65,19 @@ RUN wget -q -O /comfyui/models/sams/sam_vit_b_01ec64.pth \
 # Install critical missing dependency first
 RUN pip install --no-cache-dir simpleeval
 
-# Clone all custom nodes
+# Clone all custom nodes (|| true to handle already-existing dirs in base image)
 RUN cd /comfyui/custom_nodes && \
-    git clone https://github.com/rgthree/rgthree-comfy.git && \
-    git clone https://github.com/ltdrdata/ComfyUI-Impact-Pack.git && \
-    git clone https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git && \
-    git clone https://github.com/jags111/efficiency-nodes-comfyui.git && \
-    git clone https://github.com/ltdrdata/ComfyUI-Manager.git && \
-    git clone https://github.com/cubiq/ComfyUI_essentials.git && \
-    git clone https://github.com/JPS-GER/ComfyUI_JPS-Nodes.git && \
-    git clone https://github.com/kijai/ComfyUI-KJNodes.git && \
-    git clone https://github.com/WASasquatch/was-node-suite-comfyui.git
+    (git clone https://github.com/rgthree/rgthree-comfy.git || true) && \
+    (git clone https://github.com/ltdrdata/ComfyUI-Impact-Pack.git || true) && \
+    (git clone https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git || true) && \
+    (git clone https://github.com/jags111/efficiency-nodes-comfyui.git || true) && \
+    (git clone https://github.com/ltdrdata/ComfyUI-Manager.git || true) && \
+    (git clone https://github.com/cubiq/ComfyUI_essentials.git || true) && \
+    (git clone https://github.com/JPS-GER/ComfyUI_JPS-Nodes.git || true) && \
+    (git clone https://github.com/kijai/ComfyUI-KJNodes.git || true) && \
+    (git clone https://github.com/WASasquatch/was-node-suite-comfyui.git || true)
 
-# Install pip dependencies - NO || true, let failures be visible
+# Install pip dependencies
 RUN cd /comfyui/custom_nodes/ComfyUI-Impact-Pack && \
     pip install --no-cache-dir -r requirements.txt && \
     python install.py
