@@ -1,5 +1,84 @@
 FROM runpod/worker-comfyui:5.8.5-base
 
+# ============================================================
+# Override extra_model_paths.yaml to point to our network volume structure.
+# ============================================================
+RUN cat > /comfyui/extra_model_paths.yaml <<'YAML'
+# Section 1: base image default
+runpod_worker_comfy:
+    base_path: /runpod-volume
+    checkpoints: models/checkpoints/
+    clip: models/clip/
+    clip_vision: models/clip_vision/
+    configs: models/configs/
+    controlnet: models/controlnet/
+    embeddings: models/embeddings/
+    loras: models/loras/
+    upscale_models: models/upscale_models/
+    vae: models/vae/
+    unet: models/unet/
+
+# Section 2: Network Volume "Modelka"
+network_volume:
+    base_path: /runpod-volume/ComfyUI
+    checkpoints: models/checkpoints/
+    vae: models/vae/
+    loras: models/loras/
+    clip: models/clip/
+    clip_vision: models/clip_vision/
+    unet: models/unet/
+    upscale_models: models/upscale_models/
+    controlnet: models/controlnet/
+    embeddings: models/embeddings/
+    configs: models/configs/
+
+# Section 3: Ultralytics/YOLO + SAM models (Impact Pack)
+network_volume_detection:
+    base_path: /runpod-volume/ComfyUI/models
+    ultralytics_bbox: ultralytics/bbox/
+    ultralytics_segm: ultralytics/segm/
+    ultralytics: ultralytics/
+    sams: sams/
+YAML
+
+# Install critical missing dependency
+RUN pip install --no-cache-dir simpleeval
+
+# Clone all custom nodes
+RUN cd /comfyui/custom_nodes && \
+    (git clone https://github.com/rgthree/rgthree-comfy.git || true) && \
+    (git clone https://github.com/ltdrdata/ComfyUI-Impact-Pack.git || true) && \
+    (git clone https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git || true) && \
+    (git clone https://github.com/jags111/efficiency-nodes-comfyui.git || true) && \
+    (git clone https://github.com/ltdrdata/ComfyUI-Manager.git || true) && \
+    (git clone https://github.com/cubiq/ComfyUI_essentials.git || true) && \
+    (git clone https://github.com/JPS-GER/ComfyUI_JPS-Nodes.git || true) && \
+    (git clone https://github.com/kijai/ComfyUI-KJNodes.git || true) && \
+    (git clone https://github.com/WASasquatch/was-node-suite-comfyui.git || true)
+
+RUN cd /comfyui/custom_nodes/ComfyUI-Impact-Pack && \
+    pip install --no-cache-dir -r requirements.txt && \
+    python install.py || true
+
+RUN cd /comfyui/custom_nodes/ComfyUI-Impact-Subpack && \
+    pip install --no-cache-dir -r requirements.txt || true
+
+RUN cd /comfyui/custom_nodes/rgthree-comfy && \
+    pip install --no-cache-dir -r requirements.txt || true
+
+RUN cd /comfyui/custom_nodes/efficiency-nodes-comfyui && \
+    pip install --no-cache-dir -r requirements.txt || true
+
+RUN cd /comfyui/custom_nodes/ComfyUI_essentials && \
+    pip install --no-cache-dir -r requirements.txt || true
+
+RUN cd /comfyui/custom_nodes/ComfyUI-KJNodes && \
+    pip install --no-cache-dir -r requirements.txt || true
+
+RUN cd /comfyui/custom_nodes/was-node-suite-comfyui && \
+    pip install --no-cache-dir -r requirements.txt || true
+FROM runpod/worker-comfyui:5.8.5-base
+
 # Override extra_model_paths.yaml to point to our network volume structure
 RUN cat > /comfyui/extra_model_paths.yaml <<'YAML'
 docker_image:
