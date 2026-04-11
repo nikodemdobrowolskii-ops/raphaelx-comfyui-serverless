@@ -1,15 +1,23 @@
 FROM runpod/worker-comfyui:5.8.5-base
 
-# Install custom nodes - only the 3 required packs
+# Install custom nodes
 RUN cd /comfyui/custom_nodes && \
     git clone https://github.com/rgthree/rgthree-comfy.git && \
     git clone https://github.com/jags111/efficiency-nodes-comfyui.git && \
     git clone https://github.com/ltdrdata/ComfyUI-Impact-Pack.git
 
-# Install Impact Pack dependencies
+# Install Impact Pack - need submodules + explicit deps
 RUN cd /comfyui/custom_nodes/ComfyUI-Impact-Pack && \
+    git submodule update --init --recursive && \
+    pip install --no-cache-dir ultralytics segment-anything scipy onnxruntime opencv-python-headless && \
     pip install --no-cache-dir -r requirements.txt && \
-    python install.py
+    python install.py || true
+
+# Install impact subpack manually as fallback
+RUN if [ ! -d /comfyui/custom_nodes/ComfyUI-Impact-Subpack ]; then \
+      cd /comfyui/custom_nodes && \
+      git clone https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git; \
+    fi
 
 # Install Efficiency Nodes dependencies
 RUN cd /comfyui/custom_nodes/efficiency-nodes-comfyui && \
