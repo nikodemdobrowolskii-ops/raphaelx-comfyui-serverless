@@ -4,29 +4,34 @@ FROM runpod/worker-comfyui:5.8.5-base
 # MrSmith v6 Ultimate Edition — Custom Nodes for Serverless
 # ============================================================
 
-# Core nodes (required)
-RUN cd /comfyui/custom_nodes && \
-    git clone --depth 1 https://github.com/rgthree/rgthree-comfy.git && \
-    git clone --depth 1 https://github.com/ltdrdata/ComfyUI-Impact-Pack.git && \
-    git clone --depth 1 https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git && \
-    git clone --depth 1 https://github.com/kijai/ComfyUI-KJNodes.git && \
-    git clone --depth 1 https://github.com/WASasquatch/was-node-suite-comfyui.git && \
-    git clone --depth 1 https://github.com/jags111/efficiency-nodes-comfyui.git && \
-    git clone --depth 1 https://github.com/cubiq/ComfyUI_essentials.git && \
-    git clone --depth 1 https://github.com/JPS-GER/ComfyUI_JPS-Nodes.git && \
-    git clone --depth 1 https://github.com/ssitu/ComfyUI_UltimateSDUpscale.git && \
-    git clone --depth 1 https://github.com/city-96/ComfyUI-GGUF.git && \
-    git clone --depth 1 https://github.com/Comfy-Org/ComfyUI_Comfyroll_CustomNodes.git && \
-    git clone --depth 1 https://github.com/ltdrdata/ComfyUI-Manager.git && \
-    git clone --depth 1 https://github.com/chrisgoringe/cg-use-everywhere.git && \
-    git clone --depth 1 https://github.com/kijai/ComfyUI-SeedVR2Wrapper.git && \
-    git clone --depth 1 https://github.com/alpertunga-bile/SeedVarianceEnhancer.git
+# Core nodes (required) — each clone isolated so one bad URL doesn't kill the build
+# Disable git prompts so failed clones fail fast instead of blocking on auth prompt
+ENV GIT_TERMINAL_PROMPT=0
+ENV GIT_ASKPASS=/bin/echo
 
-# Extra nodes from MrSmith manual
 RUN cd /comfyui/custom_nodes && \
-    git clone --depth 1 https://github.com/yolain/ComfyUI-Easy-Use.git && \
-    git clone --depth 1 https://github.com/sipherxyz/comfyui-art-venture.git && \
-    git clone --depth 1 https://github.com/gseth/ControlAltAI-Nodes.git
+    for repo in \
+      "https://github.com/rgthree/rgthree-comfy.git" \
+      "https://github.com/ltdrdata/ComfyUI-Impact-Pack.git" \
+      "https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git" \
+      "https://github.com/kijai/ComfyUI-KJNodes.git" \
+      "https://github.com/WASasquatch/was-node-suite-comfyui.git" \
+      "https://github.com/jags111/efficiency-nodes-comfyui.git" \
+      "https://github.com/cubiq/ComfyUI_essentials.git" \
+      "https://github.com/JPS-GER/ComfyUI_JPS-Nodes.git" \
+      "https://github.com/ssitu/ComfyUI_UltimateSDUpscale.git" \
+      "https://github.com/city96/ComfyUI-GGUF.git" \
+      "https://github.com/Suzie1/ComfyUI_Comfyroll_CustomNodes.git" \
+      "https://github.com/ltdrdata/ComfyUI-Manager.git" \
+      "https://github.com/chrisgoringe/cg-use-everywhere.git" \
+      "https://github.com/kijai/ComfyUI-SeedVR2Wrapper.git" \
+      "https://github.com/yolain/ComfyUI-Easy-Use.git" \
+      "https://github.com/sipherxyz/comfyui-art-venture.git" \
+      "https://github.com/gseth/ControlAltAI-Nodes.git" ; do \
+      name=$(basename "$repo" .git) ; \
+      echo "=== Cloning $name ===" ; \
+      git clone --depth 1 "$repo" || echo "WARN: clone failed for $repo" ; \
+    done
 
 # Install Impact Pack dependencies (downloads subpack models + pip deps)
 RUN cd /comfyui/custom_nodes/ComfyUI-Impact-Pack && \
