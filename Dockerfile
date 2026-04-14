@@ -1,68 +1,107 @@
 FROM runpod/worker-comfyui:5.8.5-base
 
-# Install custom nodes
+# ============================================================
+# MrSmith v6 Ultimate Edition — Custom Nodes for Serverless
+# ============================================================
+
+# Core nodes (required)
 RUN cd /comfyui/custom_nodes && \
-    git clone https://github.com/rgthree/rgthree-comfy.git && \
-    git clone https://github.com/jags111/efficiency-nodes-comfyui.git && \
-    git clone https://github.com/ltdrdata/ComfyUI-Impact-Pack.git
+    git clone --depth 1 https://github.com/rgthree/rgthree-comfy.git && \
+    git clone --depth 1 https://github.com/ltdrdata/ComfyUI-Impact-Pack.git && \
+    git clone --depth 1 https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git && \
+    git clone --depth 1 https://github.com/kijai/ComfyUI-KJNodes.git && \
+    git clone --depth 1 https://github.com/WASasquatch/was-node-suite-comfyui.git && \
+    git clone --depth 1 https://github.com/jags111/efficiency-nodes-comfyui.git && \
+    git clone --depth 1 https://github.com/cubiq/ComfyUI_essentials.git && \
+    git clone --depth 1 https://github.com/JPS-GER/ComfyUI_JPS-Nodes.git && \
+    git clone --depth 1 https://github.com/ssitu/ComfyUI_UltimateSDUpscale.git && \
+    git clone --depth 1 https://github.com/city-96/ComfyUI-GGUF.git && \
+    git clone --depth 1 https://github.com/Comfy-Org/ComfyUI_Comfyroll_CustomNodes.git && \
+    git clone --depth 1 https://github.com/ltdrdata/ComfyUI-Manager.git && \
+    git clone --depth 1 https://github.com/chrisgoringe/cg-use-everywhere.git && \
+    git clone --depth 1 https://github.com/kijai/ComfyUI-SeedVR2Wrapper.git && \
+    git clone --depth 1 https://github.com/alpertunga-bile/SeedVarianceEnhancer.git
 
-# Install Impact Pack - need submodules + explicit deps
+# Extra nodes from MrSmith manual
+RUN cd /comfyui/custom_nodes && \
+    git clone --depth 1 https://github.com/yolain/ComfyUI-Easy-Use.git && \
+    git clone --depth 1 https://github.com/sipherxyz/comfyui-art-venture.git && \
+    git clone --depth 1 https://github.com/gseth/ControlAltAI-Nodes.git
+
+# Install Impact Pack dependencies (downloads subpack models + pip deps)
 RUN cd /comfyui/custom_nodes/ComfyUI-Impact-Pack && \
-    git submodule update --init --recursive && \
-    pip install --no-cache-dir ultralytics segment-anything scipy onnxruntime opencv-python-headless && \
     pip install --no-cache-dir -r requirements.txt && \
-    python install.py || true
+    python install.py
 
-# Install impact subpack manually as fallback
-RUN if [ ! -d /comfyui/custom_nodes/ComfyUI-Impact-Subpack ]; then \
-      cd /comfyui/custom_nodes && \
-      git clone https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git; \
-    fi
+# Install dependencies for all nodes that have requirements.txt
+RUN for dir in /comfyui/custom_nodes/*/; do \
+      if [ -f "$dir/requirements.txt" ]; then \
+        echo "Installing deps for $(basename $dir)..." && \
+        pip install --no-cache-dir -r "$dir/requirements.txt" || echo "WARN: deps failed for $(basename $dir)"; \
+      fi; \
+    done
 
-# Install Efficiency Nodes dependencies
-RUN cd /comfyui/custom_nodes/efficiency-nodes-comfyui && \
-    pip install --no-cache-dir -r requirements.txt || true
+# Run install.py for nodes that have it (skip Impact Pack — already done)
+RUN for dir in /comfyui/custom_nodes/*/; do \
+      if [ -f "$dir/install.py" ] && [ "$(basename $dir)" != "ComfyUI-Impact-Pack" ]; then \
+        echo "Running install.py for $(basename $dir)..." && \
+        cd "$dir" && python install.py 2>/dev/null || echo "WARN: install.py failed for $(basename $dir)"; \
+      fi; \
+    done
 
-# Download detection models (YOLO + SAM) directly into the image
-RUN mkdir -p /comfyui/models/ultralytics/bbox /comfyui/models/sams && \
-    wget -q -O /comfyui/models/ultralytics/bbox/face_yolov8m.pt \
-      https://huggingface.co/Bingsu/adetailer/resolve/main/face_yolov8m.pt && \
-    wget -q -O /comfyui/models/ultralytics/bbox/hand_yolov8s.pt \
-      https://huggingface.co/Bingsu/adetailer/resolve/main/hand_yolov8s.pt && \
-    wget -q -O /comfyui/models/ultralytics/bbox/PitEyeDetailer-v2-seg.pt \
-      https://huggingface.co/Outimus/Adetailer/resolve/main/PitEyeDetailer-v2-seg.pt && \
-    wget -q -O /comfyui/models/ultralytics/bbox/pussyV2.pt \
-      https://huggingface.co/art0123/Models_collection/resolve/main/bbox/pussyV2.pt && \
-    wget -q -O /comfyui/models/sams/sam_vit_b_01ec64.pth \
-      https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth
+# Install GGUF support (needed for SeedVR2 Q4 GGUF model)
+RUN pip install --no-cache-dir gguf
 
-# Configure model paths
+# ============================================================
+# Model paths — network volume + new model types
+# ============================================================
 RUN cat > /comfyui/extra_model_paths.yaml <<'YAML'
+# Models on network volume (mounted at /runpod-volume)
+# Supports both /runpod-volume/models/ and /runpod-volume/ComfyUI/models/ layouts
 runpod_volume_root:
-    base_path: /runpod-volume
-    checkpoints: models/checkpoints/
-    vae: models/vae/
-    loras: models/loras/
-    clip: models/clip/
-    clip_vision: models/clip_vision/
-    unet: models/unet/
-    upscale_models: models/upscale_models/
-    controlnet: models/controlnet/
-    embeddings: models/embeddings/
-    ultralytics: models/ultralytics/
-    sams: models/sams/
+    base_path: /runpod-volume/models
+    checkpoints: checkpoints/
+    vae: vae/
+    loras: loras/
+    clip: clip/
+    clip_vision: clip_vision/
+    unet: unet/
+    upscale_models: upscale_models/
+    controlnet: controlnet/
+    embeddings: embeddings/
+    ultralytics: ultralytics/
+    sams: sams/
+    diffusion_models: diffusion_models/
+    text_encoders: text_encoders/
 
 network_volume:
-    base_path: /runpod-volume/ComfyUI
-    checkpoints: models/checkpoints/
-    vae: models/vae/
-    loras: models/loras/
-    clip: models/clip/
-    clip_vision: models/clip_vision/
-    unet: models/unet/
-    upscale_models: models/upscale_models/
-    controlnet: models/controlnet/
-    embeddings: models/embeddings/
-    ultralytics: models/ultralytics/
-    sams: models/sams/
+    base_path: /runpod-volume/ComfyUI/models
+    checkpoints: checkpoints/
+    vae: vae/
+    loras: loras/
+    clip: clip/
+    clip_vision: clip_vision/
+    unet: unet/
+    upscale_models: upscale_models/
+    controlnet: controlnet/
+    embeddings: embeddings/
+    ultralytics: ultralytics/
+    sams: sams/
+    diffusion_models: diffusion_models/
+    text_encoders: text_encoders/
+
+# SeedVR2 models
+seedvr2:
+    base_path: /runpod-volume/models/SEEDVR2
+    diffusion_models: ./
+    vae: ./
 YAML
+
+# Copy startup script and handler
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
+
+COPY handler.py /handler.py
+
+# Use our startup script as entrypoint
+CMD ["/start.sh"]

@@ -320,6 +320,8 @@ def collect_output_images(outputs):
 
     for node_id, output in outputs.items():
         if "images" in output:
+            # Determine if it's a save or preview node
+            # SaveImage outputs have 'type': 'output', PreviewImage has 'type': 'temp'
             for img_info in output["images"]:
                 img_type = img_info.get("type", "output")
                 if img_type == "temp":
