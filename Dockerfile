@@ -27,7 +27,8 @@ RUN cd /comfyui/custom_nodes && \
       "https://github.com/kijai/ComfyUI-SeedVR2Wrapper.git" \
       "https://github.com/yolain/ComfyUI-Easy-Use.git" \
       "https://github.com/sipherxyz/comfyui-art-venture.git" \
-      "https://github.com/gseth/ControlAltAI-Nodes.git" ; do \
+      "https://github.com/gseth/ControlAltAI-Nodes.git" \
+      "https://github.com/moonwhaler/comfyui-moonpack.git" ; do \
       name=$(basename "$repo" .git) ; \
       echo "=== Cloning $name ===" ; \
       git clone --depth 1 "$repo" || echo "WARN: clone failed for $repo" ; \
